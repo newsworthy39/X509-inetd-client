@@ -98,6 +98,7 @@ static void ExecuteDirectory(const char * dir_name, const char * buffer_out,
 
         if (!(entry->d_type & DT_DIR)) {
 
+	    if(strncmp(d_name, ".",1) != 0) {
             char szbuf[512];
             bzero(szbuf, 512);
 
@@ -122,6 +123,7 @@ static void ExecuteDirectory(const char * dir_name, const char * buffer_out,
                 strncpy(c, outputbuffer, strlen(outputbuffer));
                 offset += strlen(outputbuffer);
             }
+          }
 
         }
 
