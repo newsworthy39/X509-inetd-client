@@ -97,34 +97,32 @@ static void ExecuteDirectory(const char * dir_name, const char * buffer_out,
          following line: */
 
         if (!(entry->d_type & DT_DIR)) {
+            if (strncmp(d_name, ".", 1) != 0) {
+                char szbuf[512];
+                bzero(szbuf, 512);
 
-	    if(strncmp(d_name, ".",1) != 0) {
-            char szbuf[512];
-            bzero(szbuf, 512);
-
-            char filename[255];
-            bzero(filename, 255);
-            sprintf(filename, "%s/%s", dir_name, d_name);
+                char filename[255];
+                bzero(filename, 255);
+                sprintf(filename, "%s/%s", dir_name, d_name);
 
 #ifdef __DEBUG__
-            printf("CLIENT EXECUTING FILE: %s/%s\n", dir_name, d_name);
+                printf("CLIENT EXECUTING FILE: %s/%s\n", dir_name, d_name);
 #endif
-            char *name[] = { filename, szbuf, NULL };
+                char *name[] = { filename, szbuf, NULL };
 
-            Execute(name);
+                Execute(name);
 
-            // Don't output if there really isn't anything to send,.
-            if (strlen(szbuf) > 0) {
-                char outputbuffer[strlen(szbuf) + strlen(d_name) + 1];
-                bzero(outputbuffer, sizeof(outputbuffer));
-                sprintf(outputbuffer, "%s: %s, ", d_name, szbuf);
+                // Don't output if there really isn't anything to send,.
+                if (strlen(szbuf) > 0) {
+                    char outputbuffer[strlen(szbuf) + strlen(d_name) + 1];
+                    bzero(outputbuffer, sizeof(outputbuffer));
+                    sprintf(outputbuffer, "%s: %s,", d_name, szbuf);
 
-                char *c = &buffer_out[offset];
-                strncpy(c, outputbuffer, strlen(outputbuffer));
-                offset += strlen(outputbuffer);
+                    char *c = &buffer_out[offset];
+                    strncpy(c, outputbuffer, strlen(outputbuffer));
+                    offset += strlen(outputbuffer);
+                }
             }
-          }
-
         }
 
 //#endif /* 0 */
