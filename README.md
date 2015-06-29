@@ -10,3 +10,8 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
  -c(ertificate X509 pki-bundle, default="mycrt.pem")  
  -n(o run scripts, default off)
  
+ # compile
+ git clone https://github.com/newsworthy39/X509-inetd-client
+ cd X509-inetd-client
+ RELEASE="Release"
+ cd $RELEASE && make
