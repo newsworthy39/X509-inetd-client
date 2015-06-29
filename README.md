@@ -5,12 +5,16 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
 
 # Arguments:
  -h(ost to connecto, default= "0.0.0.0"),
+ 
  -p(ort, default="5001"),
+ 
  -d(irectory to look for scripts, to execute when called, default="/etc/etherclient.d")
+ 
  -c(ertificate X509 pki-bundle, default="mycrt.pem")  
+ 
  -n(o run scripts, default off)
  
- # compile
+ # compile:
  git clone https://github.com/newsworthy39/X509-inetd-client
  
  cd X509-inetd-client
