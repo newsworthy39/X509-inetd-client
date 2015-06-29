@@ -14,7 +14,7 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
  
  -n(o run scripts, default off)
  
- # compile:
+# Compile:
  git clone https://github.com/newsworthy39/X509-inetd-client
  
  cd X509-inetd-client
