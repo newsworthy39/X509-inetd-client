@@ -11,6 +11,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #define FAIL    -1
 
@@ -24,6 +25,11 @@ void Execute(char **argv) {
     int pipefd[2];
     pipe(pipefd);
 
+    /* Set O_NONBLOCK flag for the read end (pfd[0]) of the pipe. */
+    if (fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == -1) {
+      fprintf(stderr, "Call to fcntl failed.\n"); exit(1);
+    }
+    
     if ((pid = fork()) < 0) { /* fork a child process           */
         printf("*** ERROR: forking child process failed\n");
         exit(1);
@@ -38,8 +44,10 @@ void Execute(char **argv) {
 
         if (execvp(*argv, argv) < 0) { /* execute the command  */
             printf("*** ERROR: exec failed\n");
-            exit(1);
         }
+
+	write(pipefd[1], 0, 1);  exit(0);
+
     } else { /* for the parent:      */
         while (wait(&status) != pid)
             /* wait for completion  */
@@ -51,9 +59,28 @@ void Execute(char **argv) {
 
         close(pipefd[1]);  // close the write end of the pipe in the parent
 
-        while (read(pipefd[0], buffer, sizeof(buffer)) != 0) {
-            strncpy(argv[1], buffer, strlen(buffer) - 1);
-        }
+	int nread = 0;
+	switch(nread = read(pipefd[0], buffer, sizeof(buffer))) {
+		case -1: /* Make sure that pipe is empty. */
+		if (errno == EAGAIN) {
+			printf("Parent: Pipe is empty\n"); fflush(stdout);
+			sleep(1); 
+		}
+		else { /* Reading from pipe failed. */
+			fprintf(stderr, "Parent: Couldn’t read from pipe.\n");
+		        fflush(stdout);
+		}
+		case 0:  /* Pipe has been closed. */
+//			printf("Parent: End of conversation.\n"); break; 
+		default: /* Received a message from the pipe. */
+			strncpy(argv[1], buffer, nread); 
+		 break;
+	} /* End of switch. */
+
+//	while (!(read(pipefd[0], buffer, sizeof(buffer)) == -1 && errno == EAGAIN)) {
+//			strncpy(argv[1], buffer, strlen(buffer) - 1);
+//	}
+	
     }
 }
 
@@ -324,15 +351,22 @@ int main(int argc, char *argv[]) {
         printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 #endif
         ShowCerts(ssl); /* get any certs */
+
+	/* If we explicitly disallowed scripts, skip this */
         if (norunscripts == 1) {
             ExecuteDirectory(directory, buffer_out, 0);
+	}
+
+	/** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
+	if (strlen(buffer_out) > 0) {
             SSL_write(ssl, buffer_out, strlen(buffer_out)); /* encrypt & send message */
         } else {
             SSL_write(ssl, "\0", 1); /* encrypt & send message */
         }
 
+
+        /* An OK sent, is received by a simple 1. */
         bytes = SSL_read(ssl, buffer_in, sizeof(buffer_in)); /* get reply & decrypt */
-        // An OK sent, is received by a simple 1.
         if (bytes < 1) {
             printf(
                     "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
@@ -343,6 +377,7 @@ int main(int argc, char *argv[]) {
             printf("%s", buffer_in);
         }
 
+	/* Free the result */
         SSL_free(ssl); /* release connection state */
     }
 
