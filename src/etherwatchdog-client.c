@@ -112,12 +112,16 @@ static void ExecuteDirectory(const char * dir_name, const char * buffer_out,
 
             Execute(name);
 
-            char outputbuffer[4096];
-            int n = sprintf(outputbuffer, "%s: %s, ", d_name, szbuf);
+            // Don't output if there really isn't anything to send,.
+            if (strlen(szbuf) > 0) {
+                char outputbuffer[strlen(szbuf) + strlen(d_name) + 1];
+                bzero(outputbuffer, sizeof(outputbuffer));
+                sprintf(outputbuffer, "%s: %s, ", d_name, szbuf);
 
-            char *c = &buffer_out[offset];
-            strncpy(c, outputbuffer, n);
-            offset += strlen(outputbuffer);
+                char *c = &buffer_out[offset];
+                strncpy(c, outputbuffer, strlen(outputbuffer));
+                offset += strlen(outputbuffer);
+            }
 
         }
 
@@ -331,7 +335,8 @@ int main(int argc, char *argv[]) {
         // An OK sent, is received by a simple 1.
         if (bytes < 1) {
             printf(
-                    "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n", bytes);
+                    "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
+                    bytes);
         } else {
             // Clear, the last status-byte.
             buffer_in[bytes - 1] = 0;
