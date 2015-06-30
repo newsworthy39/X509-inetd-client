@@ -32,7 +32,7 @@ void Execute(char **argv) {
 	}
 
 	if ((pid = fork()) < 0) { /* fork a child process           */
-		printf("*** ERROR: forking child process failed\n");
+		fprintf(stderr, "Forking child process failed\n");
 		exit(1);
 	} else if (pid == 0) { /* for the child process:         */
 
@@ -44,11 +44,11 @@ void Execute(char **argv) {
 		close(pipefd[1]);    // this descriptor is no longer needed
 
 		if (execvp(*argv, argv) < 0) { /* execute the command  */
-			printf("*** ERROR: exec failed\n");
+			fprintf(stderr, "Executing process %s failed\n", argv[0]);
+			exit(-1);
 		}
 
 		write(pipefd[1], 0, 1);
-
 		exit(0);
 
 	} else { /* for the parent:      */
@@ -353,10 +353,10 @@ int main(int argc, char *argv[]) {
 		char buffer_in[4096];
 		bzero(buffer_out, sizeof(buffer_out));
 
-#ifndef __NOSSL__
+#ifdef ___DEBUG__
 		printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
-		ShowCerts(ssl); /* get any certs */
 #endif
+		ShowCerts(ssl); /* get any certs */
 
 		/* If we explicitly disallowed scripts, skip this */
 		if (norunscripts == 1) {
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
 		/* An OK sent, is received by a simple 1. */
 		bytes = SSL_read(ssl, buffer_in, sizeof(buffer_in)); /* get reply & decrypt */
 
-		unsigned short status = (unsigned short)buffer_in[bytes-1];
+		unsigned short status = (unsigned short) buffer_in[bytes - 1];
 
 		if (bytes < 1) {
 			printf(
@@ -381,15 +381,22 @@ int main(int argc, char *argv[]) {
 					bytes);
 		} else {
 
+			// If there is input.
+			if (strlen(buffer_in) > 0) {
 #ifdef __DEBUG__
-			if (strlen(buffer_in) > 0)
 				printf(
 						"Input length: %d, Input: %s, Status: %d,  bytes rcv: %d \n",
 						strlen(buffer_in), buffer_in, status, bytes);
-			else
+#endif
+				printf("%s", buffer_in + 1);
+			} else {
+
+#ifdef __DEBUG__
 				printf("Input length: %d, Status: %d, bytes rcv: %d\n",
 						strlen(buffer_in), status, bytes);
 #endif
+
+			}
 		}
 
 		/* Free the result */
