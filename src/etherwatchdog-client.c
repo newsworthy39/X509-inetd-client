@@ -76,7 +76,7 @@ void Execute(char **argv) {
 		case 0: /* Pipe has been closed. */
 //			printf("Parent: End of conversation.\n"); break; 
 		default: /* Received a message from the pipe. */
-			strncpy(argv[1], buffer, nread);
+			strncpy(argv[1], buffer, nread - 2);
 			break;
 		} /* End of switch. */
 
@@ -146,7 +146,7 @@ static void ExecuteDirectory(const char * dir_name, const char * buffer_out,
 				if (strlen(szbuf) > 0) {
 					char outputbuffer[strlen(szbuf) + strlen(d_name) + 1];
 					bzero(outputbuffer, sizeof(outputbuffer));
-					sprintf(outputbuffer, "%s: %s,", d_name, szbuf);
+					sprintf(outputbuffer, ",%s: %s", d_name, szbuf);
 
 					char *c = &buffer_out[offset];
 					strncpy(c, outputbuffer, strlen(outputbuffer));
@@ -386,7 +386,7 @@ int main(int argc, char *argv[]) {
 #ifdef __DEBUG__
 				printf(
 						"Input length: %d, Input: %s, Status: %d,  bytes rcv: %d \n",
-						strlen(buffer_in), buffer_in, status, bytes);
+						strlen(buffer_in), buffer_in + 1, status, bytes);
 #endif
 				printf("%s", buffer_in + 1);
 			} else {
