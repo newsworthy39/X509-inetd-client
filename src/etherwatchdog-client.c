@@ -27,7 +27,7 @@ struct STDINSTDOUT {
  * Execute a file, using fork and dup2(pipe)
  * @Param char *name[] = { prog, szbuf, NULL };
  */
-void Execute(char **argv) {
+int Execute(char **argv) {
     pid_t pid;
     int status;
     int pipefd[2];
@@ -91,6 +91,8 @@ void Execute(char **argv) {
             break;
         } /* End of switch. */
     }
+
+	return WEXITSTATUS(status);
 }
 
 /**
@@ -153,7 +155,7 @@ static void ExecuteDirectory(const char * dir_name,
                 if (strlen(szbuf) > 0) {
                     stdinout->offset_out += sprintf(
                             &stdinout->buffer_out[stdinout->offset_out],
-							"%s\r\n", szbuf);
+							"%s", szbuf);
                 }
             }
         }
@@ -346,11 +348,12 @@ int main(int argc, char *argv[]) {
         }
 
         /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
-        if (tt.offset_out > 0) {
-            SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out - 1); /* encrypt & send message */
-        } else {
-            SSL_write(ssl, "\0", 1); /* encrypt & send message */
+        if (tt.offset_out < 1) {
+        	tt.buffer_out [0] = 10;
+            tt.offset_out = 1;
         }
+
+        SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out ); /* encrypt & send message */
 
         /* An OK sent, is received by a simple 1. */
         tt.offset_in = SSL_read(ssl, tt.buffer_in, sizeof(tt.buffer_in)); /* get reply & decrypt */
