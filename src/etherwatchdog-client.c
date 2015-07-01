@@ -12,14 +12,15 @@
 #include <openssl/err.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <wait.h>
 
 #define FAIL    -1
 
 struct STDINSTDOUT {
-    char buffer_in[4096];
-    int offset_in;
-    char buffer_out[4096];
-    int offset_out;
+	char buffer_in[4096];
+	unsigned int offset_in;
+	char buffer_out[4096];
+	unsigned int offset_out;
 };
 
 /**
@@ -56,9 +57,15 @@ void Execute(char **argv) {
         }
         exit(0);
     } else { /* for the parent:      */
-        while (wait(&status) != pid)
-            /* wait for completion  */
-            ;
+    	while (waitpid(-1, &status, 0) != pid) {
+    #ifdef __DEBUG__
+    			printf(" I AM  WAITING");
+    #endif
+    		}
+
+    #ifdef __DEBUG__
+    		printf("Child exit-status: %d, %d\n", WEXITSTATUS(status), errno);
+    #endif
 
         // parent
         char buffer[512];
@@ -146,7 +153,7 @@ static void ExecuteDirectory(const char * dir_name,
                 if (strlen(szbuf) > 0) {
                     stdinout->offset_out += sprintf(
                             &stdinout->buffer_out[stdinout->offset_out],
-                            "%s:%s\r", d_name, szbuf);
+							"%s\r\n", szbuf);
                 }
             }
         }
@@ -187,7 +194,7 @@ int OpenConnection(const char *hostname, int port) {
 }
 
 SSL_CTX* InitCTX(void) {
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL_CTX *ctx;
 
     OpenSSL_add_all_algorithms(); /* Load cryptos, et.al. */
@@ -253,13 +260,17 @@ int LoadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile) {
 
 int main(int argc, char *argv[]) {
 
-    int server, bytes, c, index, norunscripts = 1;
+    int server, c, index, norunscripts = 1;
     char *hostname = "localhost", *portnum = "5001", *directory =
             "/etc/etherclient.d", *crt = "mycrt.pem";
+
+    struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
+                .offset_in = 0, .offset_out = 0 };
 
     while ((c = getopt(argc, argv, "h:p:d:c:n")) != -1)
         switch (c) {
         case 'h':
+
             hostname = optarg;
             break;
         case 'p':
@@ -329,9 +340,6 @@ int main(int argc, char *argv[]) {
 #endif
         ShowCerts(ssl); /* get any certs */
 
-        struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
-                .offset_in = 0, .offset_out = 0 };
-
         /* If we explicitly disallowed scripts, skip this */
         if (norunscripts == 1) {
             ExecuteDirectory(directory, &tt);
@@ -339,7 +347,7 @@ int main(int argc, char *argv[]) {
 
         /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
         if (tt.offset_out > 0) {
-            SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
+            SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out - 1); /* encrypt & send message */
         } else {
             SSL_write(ssl, "\0", 1); /* encrypt & send message */
         }
@@ -369,7 +377,7 @@ int main(int argc, char *argv[]) {
     SSL_CTX_free(ctx); /* release context */
 
     // Make sure, we play nice with other programs.
-    if (bytes > 1)
+    if ( tt.offset_in  > 1)
         exit(EXIT_SUCCESS);
     else
         exit(EXIT_FAILURE);
