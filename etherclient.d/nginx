@@ -1,2 +1,5 @@
 #!/bin/bash
-echo "hi"
+RESULT=$(dpkg -l | grep nginx | grep -v common | awk '{ print $3 }' | head -n 1)
+if [ "$RESULT" ]; then
+	echo "nginx: $(dpkg -l | grep nginx | awk '{ print $3 }' | head -n 1)"
+fi
