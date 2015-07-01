@@ -1,2 +1,2 @@
 #!/bin/bash
-echo "apahce"
+echo "apache: $(dpkg -l | grep varnish | awk '{ print $3 }' | head -n 1)"
