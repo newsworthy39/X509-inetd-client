@@ -23,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: etherwatchdog-client
+all: x509-inetd-client
 
 # Tool invocations
-etherwatchdog-client: $(OBJS) $(USER_OBJS)
+x509-inetd-client: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "etherwatchdog-client" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "x509-inetd-client" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) etherwatchdog-client
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) x509-inetd-client
 	-@echo ' '
 
 .PHONY: all clean dependents
