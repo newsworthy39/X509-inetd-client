@@ -232,7 +232,7 @@ void ShowCerts(SSL* ssl) {
 	cert = SSL_get_peer_certificate(ssl); /* get the server's certificate */
 	if (cert != NULL) {
 #ifdef __DEBUG__
-		printf("Server certificates:\n");
+		printf("x509-inetd-client received certificates:\n");
 #endif
 		line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
 #ifdef __DEBUG__
