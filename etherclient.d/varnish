@@ -1,0 +1,5 @@
+#!/bin/bash
+VERSION=$(dpkg -l | grep varnish | grep -v libvarnish | awk '{ print $3 }' | head -n 1)
+if [ "$VERSION" ]; then
+	echo "varnish: $(dpkg -l | grep varnish | grep -v libvarnish | awk '{ print $3 }' | head -n 1)"
+fi

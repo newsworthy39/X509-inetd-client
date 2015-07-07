@@ -1,2 +1,9 @@
 #!/bin/bash
-echo "apache: $(dpkg -l | grep varnish | awk '{ print $3 }' | head -n 1)"
+if [ "$1" == "GET" ]; then
+	RESULT=$(dpkg -l | grep apache2 | grep -v common | awk '{ print $3 }' | head -n 1)
+	if [ "$RESULT" ]; then
+  		echo "apache: $(dpkg -l | grep apache | awk '{ print $3 }' | head -n 1)"
+	fi
+else
+	echo "$1" > /tmp/logfile
+fi
