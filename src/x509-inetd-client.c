@@ -1,6 +1,6 @@
-// SSL-Client.c
+// x509-inetd-client.c
 // As described on http://simplestcodings.blogspot.dk/2010/08/secure-server-client-using-openssl-in-c.html
-// The ehterwatchdog-client, is not a provisioning mechanism, but a container-based watchdog.
+// The client, is not a provisioning mechanism, but a container-based watchdog.
 
 #include <stdio.h>
 #include <errno.h>
