@@ -22,3 +22,7 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
  RELEASE="Release"
  
  cd $RELEASE && make
+
+# Lauch example
+ x509-inetd-client -c ${project_loc}/certs/mycert.pem -d ${project_loc}/etherclient.d/facts
+ 
