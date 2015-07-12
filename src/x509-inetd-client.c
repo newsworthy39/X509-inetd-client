@@ -24,10 +24,10 @@
 #define FORKEXITABORT 1
 
 struct STDINSTDOUT {
-	char buffer_in[4096];
-	unsigned int offset_in;
-	char buffer_out[4096];
-	unsigned int offset_out;
+    char buffer_in[4096];
+    unsigned int offset_in;
+    char buffer_out[4096];
+    unsigned int offset_out;
 };
 
 /**
@@ -229,8 +229,6 @@ void executeDirectory(const char * dir_name, struct STDINSTDOUT * stdinout) {
         }
         d_name = entry->d_name;
 
-        /* Print the name of the file and directory. */
-//#if 0
         /* If you don't want to print the directories, use the
          following line:, and also - skip the files with a . */
 
@@ -244,6 +242,9 @@ void executeDirectory(const char * dir_name, struct STDINSTDOUT * stdinout) {
                 int abort = executeFile(filename, stdinout);
 
                 if (abort == FORKEXITABORT) {
+#ifdef __DEBUG__
+                    printf("Child exited with abort-code.\n");
+#endif
                     break;
                 }
 
@@ -289,39 +290,39 @@ void executeDirectory(const char * dir_name, struct STDINSTDOUT * stdinout) {
  * @param port the port to connect to.
  */
 int openConnection(const char *hostname, int port) {
-	int sd;
-	struct hostent *host;
-	struct sockaddr_in addr;
+    int sd;
+    struct hostent *host;
+    struct sockaddr_in addr;
 
-	if ((host = gethostbyname(hostname)) == NULL) {
-		perror(hostname);
-		abort();
-	}
-	sd = socket(PF_INET, SOCK_STREAM, 0);
-	bzero(&addr, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = *(long*) (host->h_addr);
-	if (connect(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0) {
-		close(sd);
-		return -1;
-	}
-	return sd;
+    if ((host = gethostbyname(hostname)) == NULL) {
+        perror(hostname);
+        abort();
+    }
+    sd = socket(PF_INET, SOCK_STREAM, 0);
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = *(long*) (host->h_addr);
+    if (connect(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0) {
+        close(sd);
+        return -1;
+    }
+    return sd;
 }
 
 SSL_CTX* initCTX(void) {
-	const SSL_METHOD *method;
-	SSL_CTX *ctx;
+    const SSL_METHOD *method;
+    SSL_CTX *ctx;
 
-	OpenSSL_add_all_algorithms(); /* Load cryptos, et.al. */
-	SSL_load_error_strings(); /* Bring in and register error messages */
-	method = TLSv1_2_client_method(); /* Create new client-method instance */
-	ctx = SSL_CTX_new(method); /* Create new context */
-	if (ctx == NULL) {
-		ERR_print_errors_fp(stderr);
-		abort();
-	}
-	return ctx;
+    OpenSSL_add_all_algorithms(); /* Load cryptos, et.al. */
+    SSL_load_error_strings(); /* Bring in and register error messages */
+    method = TLSv1_2_client_method(); /* Create new client-method instance */
+    ctx = SSL_CTX_new(method); /* Create new context */
+    if (ctx == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    return ctx;
 }
 
 /**
@@ -331,172 +332,188 @@ SSL_CTX* initCTX(void) {
  * @return void
  */
 void showCertificates(SSL* ssl) {
-	X509 *cert;
-	char *line;
+    X509 *cert;
+    char *line;
 
-	cert = SSL_get_peer_certificate(ssl); /* get the server's certificate */
-	if (cert != NULL) {
+    cert = SSL_get_peer_certificate(ssl); /* get the server's certificate */
+    if (cert != NULL) {
 #ifdef __DEBUG__
-		printf("x509-inetd-client received certificates:\n");
+        printf("x509-inetd-client received certificates:\n");
 #endif
-		line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+        line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
 #ifdef __DEBUG__
-		printf("Subject: %s\n", line);
+        printf("Subject: %s\n", line);
 #endif
-		free(line); /* free the malloc'ed string */
-		line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+        free(line); /* free the malloc'ed string */
+        line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
 #ifdef __DEBUG__
-		printf("Issuer: %s\n", line);
+        printf("Issuer: %s\n", line);
 #endif
-		free(line); /* free the malloc'ed string */
-		X509_free(cert); /* free the malloc'ed certificate copy */
-	} else
-		printf("No certificates.\n");
+        free(line); /* free the malloc'ed string */
+        X509_free(cert); /* free the malloc'ed certificate copy */
+    } else
+        printf("No certificates.\n");
 }
 
 int loadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile) {
-	/* set the local certificate from CertFile */
-	if (SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0) {
-		ERR_print_errors_fp(stderr);
-		return -1;
-	}
-	/* set the private key from KeyFile (may be the same as CertFile) */
-	if (SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0) {
-		ERR_print_errors_fp(stderr);
-		return -1;
-	}
-	/* verify private key */
-	if (!SSL_CTX_check_private_key(ctx)) {
-		fprintf(stderr, "Private key does not match the public certificate\n");
-		return -1;
-	}
+    /* set the local certificate from CertFile */
+    if (SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+    /* set the private key from KeyFile (may be the same as CertFile) */
+    if (SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+    /* verify private key */
+    if (!SSL_CTX_check_private_key(ctx)) {
+        fprintf(stderr, "Private key does not match the public certificate\n");
+        return -1;
+    }
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
 
-	int server, c, index, norunscripts = 1;
-	char *hostname = "localhost", *portnum = "5001", *directory =
-			"/etc/etherclient.d", *crt = "mycrt.pem";
+    int server, c, index, norunscripts = 1;
+    char *hostname = "localhost", *portnum = "5001", *directory =
+            "/etc/etherclient.d", *crt = "mycrt.pem";
 
-	struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
-			.offset_in = 0, .offset_out = 0 };
+    struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
+            .offset_in = 0, .offset_out = 0 };
 
-	while ((c = getopt(argc, argv, "h:p:d:c:n")) != -1)
-		switch (c) {
-		case 'h':
-
-			hostname = optarg;
-			break;
-		case 'p':
-			portnum = optarg;
-			break;
-		case 'd':
-			directory = optarg;
-			break;
-		case 'c':
-			crt = optarg;
-			break;
-		case 'n':
-			norunscripts = 0;
-			break;
-		case '?':
-			if (optopt == 'c')
-				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-			else if (isprint(optopt))
-				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-			else
-				fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-			return 1;
-		default:
-			abort();
-		}
+    while ((c = getopt(argc, argv, "h:p:d:c:n")) != -1)
+        switch (c) {
+        case 'h':
+            hostname = optarg;
+            break;
+        case 'p':
+            portnum = optarg;
+            break;
+        case 'd':
+            directory = optarg;
+            break;
+        case 'c':
+            crt = optarg;
+            break;
+        case 'n':
+            norunscripts = 0;
+            break;
+        case '?':
+            if (optopt == 'c')
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint(optopt))
+                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+            return 1;
+        default:
+            abort();
+        }
 
 #ifdef __DEBUG__
-	printf(
-			"-h(osts) = %s, -p(ort) = %s, -d(irectory) = %s, -c(ertificate-bundle) = %s, -n(o run scripts)\n",
-			hostname, portnum, directory, crt);
+    printf(
+            "-h(osts) = %s, -p(ort) = %s, -d(irectory) = %s, -c(ertificate-bundle) = %s, -n(o run scripts)\n",
+            hostname, portnum, directory, crt);
 #endif
 
-	for (index = optind; index < argc; index++) {
-		printf("Non-option argument %s\n", argv[index]);
-		return 0;
-	}
+    for (index = optind; index < argc; index++) {
+        printf("Non-option argument %s\n", argv[index]);
+        return 0;
+    }
 
-	// SSL Stuff.
-	SSL_CTX *ctx;
-	SSL *ssl;
+    // SSL Stuff.
+    SSL_CTX *ctx;
+    SSL *ssl;
 
-	SSL_library_init();
+    SSL_library_init();
 
-	ctx = initCTX();
+    ctx = initCTX();
 
-	// Load certificates, but make sure to bail with an error, to play nice with pipes etc.
-	if (-1 == loadCertificates(ctx, crt, crt)) {
-		printf("error: Could not load certificates, %s, key: %s\n", crt, crt);
-		exit(EXIT_FAILURE);
-	}
+    // Load certificates, but make sure to bail with an error, to play nice with pipes etc.
+    if (-1 == loadCertificates(ctx, crt, crt)) {
+        printf("error: Could not load certificates, %s, key: %s\n", crt, crt);
+        exit(EXIT_FAILURE);
+    }
 
-	// Connect to the endpoint.
-	if (-1 == (server = openConnection(hostname, atoi(portnum)))) {
-		printf("error: Could not connect, to %s:%d\n", hostname, atoi(portnum));
-		exit(EXIT_FAILURE);
-	}
+    char * pcf = strtok(hostname, ":");
 
-	ssl = SSL_new(ctx); /* create new SSL connection state */
-	SSL_set_fd(ssl, server); /* attach the socket descriptor */
+    // double-while for shitty connect-disconnect semantics..
+    while (pcf != NULL) {
+        while (pcf != NULL) {
 
-	if (SSL_connect(ssl) == FAIL) /* perform the connection */
-		ERR_print_errors_fp(stderr);
-	else {
+            // Connect to the endpoint.
+            if (-1 == (server = openConnection(pcf, atoi(portnum)))) {
+                printf("error: Could not connect, to %s:%d\n", pcf,
+                        atoi(portnum));
+
+                // advance
+                pcf = strtok(NULL, ":");
+
+                break;
+            }
+
+            ssl = SSL_new(ctx); /* create new SSL connection state */
+            SSL_set_fd(ssl, server); /* attach the socket descriptor */
+
+            if (SSL_connect(ssl) == FAIL) /* perform the connection */
+                ERR_print_errors_fp(stderr);
+            else {
 
 #ifdef ___DEBUG__
-		printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
+                printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 #endif
-		showCertificates(ssl); /* get any certs */
+                showCertificates(ssl); /* get any certs */
 
-		/* If we explicitly disallowed scripts, skip this */
-		if (norunscripts == 1) {
-			executeDirectory(directory, &tt);
-		}
+                /* If we explicitly disallowed scripts, skip this */
+                if (norunscripts == 1) {
+                    executeDirectory(directory, &tt);
+                }
 
-		/** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
-		if (tt.offset_out < 1) {
-			tt.buffer_out[0] = 10;
-			tt.offset_out = 1;
-		}
+                /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
+                if (tt.offset_out < 1) {
+                    tt.buffer_out[0] = 10;
+                    tt.offset_out = 1;
+                }
 
-		SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
+                SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
 
-		/* An OK sent, is received by a simple 1. */
-		tt.offset_in = SSL_read(ssl, tt.buffer_in,
-				sizeof(tt.buffer_in)); /* get reply & decrypt */
+                /* An OK sent, is received by a simple 1. */
+                tt.offset_in = SSL_read(ssl, tt.buffer_in,
+                        sizeof(tt.buffer_in)); /* get reply & decrypt */
 
-		if (tt.offset_in < 1) {
-			printf(
-					"Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
-					tt.offset_in);
-		} else {
-			// If there is input.
+                if (tt.offset_in < 1) {
+                    printf(
+                            "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
+                            tt.offset_in);
+                } else {
+                    // If there is input.
 #ifdef __DEBUG__
-			printf("X509-inetd-client received:\n%s", tt.buffer_in);
+                    printf("X509-inetd-client received:\n%s", tt.buffer_in);
 #else
-			printf("%s", tt.buffer_in);
+                    printf("%s", tt.buffer_in);
 #endif
-		}
+                }
 
-		/* Free the result */
-		SSL_free(ssl); /* release connection state */
+                /* Free the result */
+                SSL_free(ssl); /* release connection state */
 
-	}
+            }
 
-	close(server); /* close socket */
-	SSL_CTX_free(ctx); /* release context */
+            close(server); /* close socket */
 
-	// Make sure, we play nice with other programs.
-	if (tt.offset_in > 1)
-		exit(EXIT_SUCCESS);
-	else
-		exit(EXIT_FAILURE);
+            // Advance to next host.
+
+            pcf = strtok(NULL, ":");
+        } // end while, strtok
+    } // end retry.
+    SSL_CTX_free(ctx); /* release context */
+
+    // Make sure, we play nice with other programs.
+    if (tt.offset_in > 1)
+        exit(EXIT_SUCCESS);
+    else
+        exit(EXIT_FAILURE);
 }
