@@ -20,8 +20,8 @@
 
 // Used, when controlling output from children to do IPC.
 #define FORKOK 0
-#define FORKOKSHARE 1
-#define FORKEXITABORT 2
+#define FORKOKSHARE 2
+#define FORKEXITABORT 1
 
 struct STDINSTDOUT {
 	char buffer_in[4096];
