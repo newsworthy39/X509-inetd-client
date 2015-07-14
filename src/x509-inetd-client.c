@@ -384,25 +384,25 @@ int loadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile) {
 int main(int argc, char *argv[]) {
 
     int server, c, index, norunscripts = 1;
-    char *hostname = "localhost", *portnum = "5001", *directory =
-            "/etc/etherclient.d", *crt = "mycrt.pem";
+    char hostname[1024], portnum[6], directory[256], crt[256];
 
+    // This will be our stdin/stdout struct.
     struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
             .offset_in = 0, .offset_out = 0 };
 
     while ((c = getopt(argc, argv, "h:p:d:c:n")) != -1)
         switch (c) {
         case 'h':
-            hostname = optarg;
+            strcpy(hostname, optarg);
             break;
         case 'p':
-            portnum = optarg;
+            strcpy(portnum, optarg);
             break;
         case 'd':
-            directory = optarg;
+            strcpy(directory, optarg);
             break;
         case 'c':
-            crt = optarg;
+            strcpy(crt, optarg);
             break;
         case 'n':
             norunscripts = 0;
@@ -418,13 +418,10 @@ int main(int argc, char *argv[]) {
         default:
             printf(
                     "\n-h(ost) = %s, -p(ort) = %s,"
-                            "\n-f(ile, multiple paths seperated with a ':') = % s,"
+                            "\n-f(ile, multiple paths seperated with a ':') = %s,"
                             "\n-d(irectory, multiple directories seperated with a ':') = %s,"
-                            "\n-c(ertificate-bundle) = %s,"
-                            "\n-m(ax children) = %d\n"
-                            "\n-u(ser id) = %d\n"
-                            "\n-g(group ud) = %d\n", hostname, portnum, files,
-                    directory, crt, maxchildren, uid, gid);
+                            "\n-c(ertificate-bundle) = %s,", hostname, portnum,
+                    files, directory, crt);
             abort();
         }
 
@@ -448,70 +445,85 @@ int main(int argc, char *argv[]) {
     }
 
     int abort = FORKOK;
+
     if (strlen(files) > 0 && norunscripts == 1) {
         abort = executeFile(files, &tt);
     }
 
     // Connect to the endpoint.
+    char * rest, * token, * ptr = hostname;
+    while (token = strtok_r(ptr, ":",&rest)) { // retry-looop
+        while (1) {
 
-    if (-1 == ( server = openConnection(hostname, atoi(portnum) ) ) )  {
-        printf("error: Could not connect, to %s:%d\n", hostname, atoi(portnum));
-        exit(0);
-    }
+            if (-1 == (server = openConnection(token, atoi(portnum)))) {
+                printf("error: Could not connect, to %s:%d\n", token,
+                        atoi(portnum));
 
-    ssl = SSL_new(ctx); /* create new SSL connection state */
-    SSL_set_fd(ssl, server); /* attach the socket descriptor */
+                    ptr = rest;
 
-    if (SSL_connect(ssl) == FAIL) { /* perform the connection */
-        ERR_print_errors_fp(stderr);
-    } else {
+                    break;
+            }
+
+            ssl = SSL_new(ctx); /* create new SSL connection state */
+
+            // Attach the socket-descriptor.
+            SSL_set_fd(ssl, server);
+
+            if (SSL_connect(ssl) == FAIL) { /* perform the connection */
+                ERR_print_errors_fp(stderr);
+            } else {
 
 #ifdef ___DEBUG__
-        printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
+                printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 #endif
-        showCertificates(ssl); /* get any certs */
+                showCertificates(ssl); /* get any certs */
 
-        /* If we explicitly disallowed scripts, skip this */
-        if (norunscripts == 1 && abort != FORKEXITABORT) {
-            executeDirectory(directory, &tt);
-        }
+                /* If we explicitly disallowed scripts, skip this */
+                if (norunscripts == 1 && abort != FORKEXITABORT) {
+                    executeDirectory(directory, &tt);
+                }
 
-        /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
-        if (tt.offset_out < 1) {
-            tt.buffer_out[0] = 10;
-            tt.offset_out = 1;
-        }
+                /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
+                if (tt.offset_out < 1) {
+                    tt.buffer_out[0] = 10;
+                    tt.offset_out = 1;
+                }
 
-        SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
+                SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
 
-        /* An OK sent, is received by a simple 1. */
-        tt.offset_in = SSL_read(ssl, tt.buffer_in, sizeof(tt.buffer_in)); /* get reply & decrypt */
+                /* An OK sent, is received by a simple 1. */
+                tt.offset_in = SSL_read(ssl, tt.buffer_in,
+                        sizeof(tt.buffer_in)); /* get reply & decrypt */
 
-        if (tt.offset_in < 1) {
-            printf(
-                    "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
-                    tt.offset_in);
-        } else {
-            // If there is input.
+                if (tt.offset_in < 1) {
+                    printf(
+                            "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
+                            tt.offset_in);
+                } else {
+                    // If there is input.
 #ifdef __DEBUG__
-            printf("X509-inetd-client received:\n%s", tt.buffer_in);
+                    printf("X509-inetd-client received:\n%s", tt.buffer_in);
 #else
-            printf("%s", tt.buffer_in);
+                    printf("%s", tt.buffer_in);
 #endif
-        }
+                }
 
-        /* Free the result */
-        SSL_free(ssl); /* release connection state */
+                /* Free the result */
+                SSL_free(ssl); /* release connection state */
 
-    }
+            } // end clean-connect.
 
-    close(server); /* close socket */
+            // close the socket and advance
+            close(server);
+
+            ptr = rest;
+
+
+        } // end retry-loop
+    } // end break-out-loop
 
     SSL_CTX_free(ctx); /* release context */
 
-    // Make sure, we play nice with other programs.
-    if (tt.offset_in > 1)
-        exit(EXIT_SUCCESS);
-    else
-        exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
+
 }
