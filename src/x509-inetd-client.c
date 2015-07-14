@@ -451,9 +451,12 @@ int main(int argc, char *argv[]) {
     }
 
     // Connect to the endpoint.
-    char * rest, * token, * ptr = hostname;
-    while (token = strtok_r(ptr, ":",&rest)) { // retry-looop
-        while (1) {
+
+    char * rest, * token = 1, * ptr = hostname;
+    while (token != NULL) { // retry-looop
+        while (token != NULL) {
+
+            token = strtok_r(ptr, ":",&rest);
 
             if (-1 == (server = openConnection(token, atoi(portnum)))) {
                 printf("error: Could not connect, to %s:%d\n", token,
@@ -517,7 +520,6 @@ int main(int argc, char *argv[]) {
             close(server);
 
             ptr = rest;
-
 
         } // end retry-loop
     } // end break-out-loop
