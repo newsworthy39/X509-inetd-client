@@ -449,85 +449,63 @@ int main(int argc, char *argv[]) {
 
     int abort = FORKOK;
     if (strlen(files) > 0 && norunscripts == 1) {
-        if (FORKEXITABORT == executeFile(files, &tt)) {
-            exit(0);
-        }
+        abort = executeFile(files, &tt);
     }
 
-    char * pcf = strtok(hostname, ":");
+    // Connect to the endpoint.
 
-    // double-while for shitty connect-disconnect semantics..
-    while (pcf != NULL) {
-        while (pcf != NULL) {
+    if (-1 == ( server = openConnection(hostname, atoi(portnum) ) ) )  {
+        printf("error: Could not connect, to %s:%d\n", hostname, atoi(portnum));
+        exit(0);
+    }
 
-            // Connect to the endpoint.
-            if (-1 != (server = openConnection(pcf, atoi(portnum)))) {
-                printf("error: Could not connect, to %s:%d\n", pcf,
-                        atoi(portnum));
+    ssl = SSL_new(ctx); /* create new SSL connection state */
+    SSL_set_fd(ssl, server); /* attach the socket descriptor */
 
-                // advance
-                pcf = strtok(NULL, ":");
-
-                break;
-            }
-
-            ssl = SSL_new(ctx); /* create new SSL connection state */
-            SSL_set_fd(ssl, server); /* attach the socket descriptor */
-
-            if (SSL_connect(ssl) == FAIL) { /* perform the connection */
-                ERR_print_errors_fp(stderr);
-
-                // advance our list.
-                pcf = strtok(NULL, ":");
-                break;
-            } else {
+    if (SSL_connect(ssl) == FAIL) { /* perform the connection */
+        ERR_print_errors_fp(stderr);
+    } else {
 
 #ifdef ___DEBUG__
-                printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
+        printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 #endif
-                showCertificates(ssl); /* get any certs */
+        showCertificates(ssl); /* get any certs */
 
-                /* If we explicitly disallowed scripts, skip this */
-                if (norunscripts == 1 && abort != FORKEXITABORT) {
-                    executeDirectory(directory, &tt);
-                }
+        /* If we explicitly disallowed scripts, skip this */
+        if (norunscripts == 1 && abort != FORKEXITABORT) {
+            executeDirectory(directory, &tt);
+        }
 
-                /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
-                if (tt.offset_out < 1) {
-                    tt.buffer_out[0] = 10;
-                    tt.offset_out = 1;
-                }
+        /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
+        if (tt.offset_out < 1) {
+            tt.buffer_out[0] = 10;
+            tt.offset_out = 1;
+        }
 
-                SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
+        SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
 
-                /* An OK sent, is received by a simple 1. */
-                tt.offset_in = SSL_read(ssl, tt.buffer_in,
-                        sizeof(tt.buffer_in)); /* get reply & decrypt */
+        /* An OK sent, is received by a simple 1. */
+        tt.offset_in = SSL_read(ssl, tt.buffer_in, sizeof(tt.buffer_in)); /* get reply & decrypt */
 
-                if (tt.offset_in < 1) {
-                    printf(
-                            "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
-                            tt.offset_in);
-                } else {
-                    // If there is input.
+        if (tt.offset_in < 1) {
+            printf(
+                    "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
+                    tt.offset_in);
+        } else {
+            // If there is input.
 #ifdef __DEBUG__
-                    printf("X509-inetd-client received:\n%s", tt.buffer_in);
+            printf("X509-inetd-client received:\n%s", tt.buffer_in);
 #else
-                    printf("%s", tt.buffer_in);
+            printf("%s", tt.buffer_in);
 #endif
-                }
+        }
 
-                /* Free the result */
-                SSL_free(ssl); /* release connection state */
+        /* Free the result */
+        SSL_free(ssl); /* release connection state */
 
-            }
+    }
 
-            close(server); /* close socket */
-
-            // Advance to next host.
-            pcf = strtok(NULL, ":");
-        } // end while, strtok
-    } // end retry-list-loop.
+    close(server); /* close socket */
 
     SSL_CTX_free(ctx); /* release context */
 
