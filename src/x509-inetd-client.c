@@ -301,8 +301,8 @@ int openConnection(const char *hostname, int port) {
     struct sockaddr_in addr;
 
     if ((host = gethostbyname(hostname)) == NULL) {
-        perror(hostname);
-        abort();
+        printf("Could not find %s", hostname);
+        return 1;
     }
     sd = socket(PF_INET, SOCK_STREAM, 0);
     bzero(&addr, sizeof(addr));
