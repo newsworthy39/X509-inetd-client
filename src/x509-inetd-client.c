@@ -450,26 +450,28 @@ int main(int argc, char *argv[]) {
         abort = executeFile(files, &tt);
     }
 
-    // Connect to the endpoint.
+    /* If we explicitly disallowed scripts, skip this */
+    if (norunscripts == 1 && abort != FORKEXITABORT) {
+        executeDirectory(directory, &tt);
+    }
 
-    char * rest, * token = 1, * ptr = hostname;
+    // Connect to the endpoint.
+    char * rest, *token = 1, *ptr = hostname;
     while (token != NULL) { // retry-looop
         while (token != NULL) {
 
-            token = strtok_r(ptr, ":",&rest);
+            token = strtok_r(ptr, ":", &rest);
 
             if (-1 == (server = openConnection(token, atoi(portnum)))) {
                 printf("error: Could not connect, to %s:%d\n", token,
                         atoi(portnum));
 
-                    ptr = rest;
+                ptr = rest;
 
-                    break;
+                break;
             }
 
             ssl = SSL_new(ctx); /* create new SSL connection state */
-
-            // Attach the socket-descriptor.
             SSL_set_fd(ssl, server);
 
             if (SSL_connect(ssl) == FAIL) { /* perform the connection */
@@ -480,11 +482,6 @@ int main(int argc, char *argv[]) {
                 printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 #endif
                 showCertificates(ssl); /* get any certs */
-
-                /* If we explicitly disallowed scripts, skip this */
-                if (norunscripts == 1 && abort != FORKEXITABORT) {
-                    executeDirectory(directory, &tt);
-                }
 
                 /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
                 if (tt.offset_out < 1) {
