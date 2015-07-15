@@ -602,7 +602,8 @@ int main(int argc, char *argv[]) {
 							tt.offset_in);
 				} else {
 					// If there is input.
-					printf("%s: %s", token, tt.buffer_in);
+				    if (strlen(tt.buffer_in) > 0)
+				        printf("%s:%s", token, tt.buffer_in);
 				}
 
 				/* Free the result */
