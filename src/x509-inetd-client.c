@@ -560,6 +560,10 @@ int main(int argc, char *argv[]) {
 
 	while (1) {
 		while ((token = strtok_r(rest, ":,", &rest))) {
+
+		    // Reuse-means zero, that-stuff.
+		    bzero(tt.buffer_in, sizeof(tt.buffer_in));
+
 			// Connect to the endpoint.
 			if (-1 == (server = openConnection(token, atoi(portnum)))) {
 				printf("error: Could not connect, to %s:%d\n", token,
