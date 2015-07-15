@@ -21,6 +21,8 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
  
  -i(nput, from cli. null-terminated string, that allows data to be supplied before files/dirs)
  
+ -s(ilent. Do not output error-messages or the likes)
+ 
 # Compile:
  git clone https://github.com/newsworthy39/X509-inetd-client
  
