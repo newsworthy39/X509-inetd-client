@@ -261,29 +261,6 @@ int executeDirectory(const char * dir_name, struct STDINSTDOUT * stdinout) {
 		}
 	}
 
-//#endif /* 0 */
-
-//      if (entry->d_type & DT_DIR) {
-//
-//          /* Check that the directory is not "d" or d's parent. */
-//
-//          if (strcmp(d_name, "..") != 0 && strcmp(d_name, ".") != 0) {
-//              int path_length;
-//              char path[PATH_MAX];
-//
-//              path_length = snprintf(path, PATH_MAX, "%s/%s", dir_name,
-//                      d_name);
-//              printf("%s\n", path);
-//              if (path_length >= PATH_MAX) {
-//                  fprintf(stderr, "Path length has got too long.\n");
-//                  exit(EXIT_FAILURE);
-//              }
-//
-//              /* Recursively call "list_dir" with the new path. */
-//              ExecuteDirectory(path, buffer_in, buffer_out, offset);
-//          }
-//      }
-
 	/* After going through all the entries, close the directory. */
 	if (closedir(d)) {
 		fprintf(stderr, "Could not close '%s': %s\n", dir_name,
@@ -488,7 +465,7 @@ int main(int argc, char *argv[]) {
 	struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
 			.offset_in = 0, .offset_out = 0 };
 
-	while ((c = getopt(argc, argv, "h:p:d:c:nrf:")) != -1)
+	while ((c = getopt(argc, argv, "h:p:d:c:nrf:i:")) != -1)
 		switch (c) {
 		case 'h':
 			strcpy(hostname, optarg);
@@ -511,6 +488,9 @@ int main(int argc, char *argv[]) {
 		case 'r':
 			recursive = 1;
 			break;
+		case 'i':
+			tt.offset_out += sprintf(&tt.buffer_out[tt.offset_out], "%s", optarg, strlen(optarg));
+			break;
 		case '?':
 			if (optopt == 'c')
 				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -526,8 +506,9 @@ int main(int argc, char *argv[]) {
 							"\n-d(irectory, multiple directories seperated with a ':') = %s,"
 							"\n-c(ertificate-bundle) = %s,"
 							"\n-n(o run scripts) = %d\n,"
-							"\n-m(recursive) = %d\n", hostname, portnum, files,
-					directory, crt, norunscripts, recursive);
+							"\n-m(recursive) = %d\n,"
+							"\n-i(nput, add input from cli) = %s\n,", hostname,
+					portnum, files, directory, crt, norunscripts, recursive,tt.buffer_in[tt.offset_in])	;
 			abort();
 		}
 

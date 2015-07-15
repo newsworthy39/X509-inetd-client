@@ -19,6 +19,7 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
   
  -r(ecursive. When using directories (or multiple), recurse directories. Default off)
  
+ -i(nput, from cli. null-terminated string, that allows data to be supplied before files/dirs)
  
 # Compile:
  git clone https://github.com/newsworthy39/X509-inetd-client
