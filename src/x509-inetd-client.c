@@ -489,7 +489,7 @@ int main(int argc, char *argv[]) {
 			recursive = 1;
 			break;
 		case 'i':
-			tt.offset_out += sprintf(&tt.buffer_out[tt.offset_out], "%s", optarg, strlen(optarg));
+			tt.offset_out += sprintf(&tt.buffer_out[tt.offset_out], "%s\0", optarg, strlen(optarg)+1);
 			break;
 		case '?':
 			if (optopt == 'c')
