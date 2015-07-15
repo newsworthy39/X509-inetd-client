@@ -489,7 +489,7 @@ int main(int argc, char *argv[]) {
 			recursive = 1;
 			break;
 		case 'i':
-			tt.offset_out += sprintf(&tt.buffer_out[tt.offset_out], "%s", optarg);
+			tt.offset_out += sprintf(&tt.buffer_out[tt.offset_out], "%s\n", optarg);
 			break;
 		case '?':
 			if (optopt == 'c')
@@ -508,7 +508,7 @@ int main(int argc, char *argv[]) {
 							"\n-n(o run scripts) = %d\n,"
 							"\n-m(recursive) = %d\n,"
 							"\n-i(nput, add input from cli) = %s\n,", hostname,
-					portnum, files, directory, crt, norunscripts, recursive,tt.buffer_in[tt.offset_in])	;
+					portnum, files, directory, crt, norunscripts, recursive,&tt.buffer_out[tt.offset_out])	;
 			abort();
 		}
 
