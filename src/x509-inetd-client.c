@@ -602,11 +602,7 @@ int main(int argc, char *argv[]) {
 							tt.offset_in);
 				} else {
 					// If there is input.
-#ifdef __DEBUG__
-					printf("X509-inetd-client received:\n%s", tt.buffer_in);
-#else
-					printf("%s", tt.buffer_in);
-#endif
+					printf("%s: %s", token, tt.buffer_in);
 				}
 
 				/* Free the result */
