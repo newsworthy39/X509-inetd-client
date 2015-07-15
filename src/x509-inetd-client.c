@@ -603,7 +603,7 @@ int main(int argc, char *argv[]) {
 				} else {
 					// If there is input.
 				    if (strlen(tt.buffer_in) > 0)
-				        printf("%s:%s", token, tt.buffer_in);
+				        printf("%s", tt.buffer_in);
 				}
 
 				/* Free the result */
