@@ -628,7 +628,7 @@ int main(int argc, char *argv[]) {
                 close(server); /* close socket */
 
 #ifdef __DEBUG__
-                printf("Child exited, sucessfully");
+                printf("Child exited, sucessfully.\n");
 #endif
                 exit(EXIT_SUCCESS);
 
