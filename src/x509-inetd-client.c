@@ -638,9 +638,7 @@ int main(int argc, char *argv[]) {
                     printf("Had a problem, forking.\n");
                 }
             } else {
-#ifdef __DEBUG__
-                printf("Forking, pid was %d.\n", pids[pCounter++]);
-#endif
+                pCounter++;
             } // end fork.
 
         } // end strtok_r loop
@@ -655,11 +653,8 @@ int main(int argc, char *argv[]) {
     unsigned int i = 0;
     for (i = 0; i < pCounter; i++) {
         int status;
-        while (0 == waitpid(pids[i], &status, WNOHANG)) {
-#ifdef __DEBUG__
-            printf("Parent waiting for %d.\n", pids[i]);
-#endif
-        }
+        while (0 == waitpid(pids[i], &status, WNOHANG))
+            ;
 
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
             printf("Process %d failed.\n", pids[i]);
