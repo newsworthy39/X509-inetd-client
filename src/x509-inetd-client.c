@@ -659,7 +659,6 @@ int main(int argc, char *argv[]) {
 #ifdef __DEBUG__
             printf("Parent waiting for %d.\n", pids[i]);
 #endif
-            sleep(1);
         }
 
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
