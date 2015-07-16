@@ -658,7 +658,8 @@ int main(int argc, char *argv[]) {
             ;
 
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-            printf("Process %d failed.\n", pids[i]);
+            if (silent ==0)
+                printf("Process %d failed.\n", pids[i]);
         }
     }
 
