@@ -655,7 +655,7 @@ int main(int argc, char *argv[]) {
     unsigned int i = 0;
     for (i = 0; i < pCounter; i++) {
         int status;
-        while (-1 == waitpid(pids[i], &status, 0)) {
+        while (0 == waitpid(pids[i], &status, 0)) {
 #ifdef __DEBUG__
             printf("Parent waiting for %d.\n", pids[i]);
 #endif
