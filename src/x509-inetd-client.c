@@ -662,10 +662,12 @@ int main(int argc, char *argv[]) {
         }
 
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-            printf("Process %d failed", pids[i]);
+            printf("Process %d failed.\n", pids[i]);
             exit(1);
         }
     }
+
+    printf("\n");
 
     SSL_CTX_free(ctx); /* release context */
 
