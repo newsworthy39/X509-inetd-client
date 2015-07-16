@@ -654,6 +654,7 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < pCounter; i++) {
         int status;
         while (0 == waitpid(pids[i], &status, WNOHANG))
+            usleep(1000);
             ;
 
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
