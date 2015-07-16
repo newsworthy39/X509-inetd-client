@@ -666,8 +666,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("\n");
-
     SSL_CTX_free(ctx); /* release context */
 
     exit(EXIT_SUCCESS);
