@@ -5,7 +5,7 @@ The x509 inetd-like client. The inetd-superserver, takes simple init-style sysv-
 
 # Arguments:
 
- -h(ost to connecto, default= "0.0.0.0"),
+ -h(ost to connecto, default= "0.0.0.0", multiple delimited by a : or a ,),
   
  -p(ort, default="5001"),
  
