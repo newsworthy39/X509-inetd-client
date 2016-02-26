@@ -16,6 +16,9 @@
 #include <fcntl.h>
 #include <wait.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <pthread.h>
 
 #define FAIL    -1
 
@@ -25,17 +28,21 @@
 #define FORKEXITABORT 1
 
 struct STDINSTDOUT {
-    char buffer_in[4096];
     unsigned int offset_in;
     char buffer_out[4096];
+    char buffer_in[4096];
     unsigned int offset_out;
 };
 
-char *hostname = "localhost", *portnum = "5001", *directory = "", *files = "",
-        *crt = "mycrt.pem", *authority = NULL;
+int c, norunscripts = 1, recursive = 0;
+char hostname[256] = { "localhost" }, portnum[8] = { "5001" }, directory[256] =
+        { 0 }, crt[256] = { "mycrt.pem" }, files[256] = { 0 };
 
 // default is to use nobody when forking.
-unsigned int children = 0, maxchildren = 5, uid = 65534, gid = 65534;
+unsigned int children = 0, maxchildren = 5, uid = 65534, gid = 65534, silent;
+
+// SSL Stuff.
+SSL_CTX *ctx;
 
 /**
  * Execute a file, using fork and dup2(pipe)
@@ -455,12 +462,89 @@ int loadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile) {
     return 0;
 }
 
+struct arg_struct {
+    char line[4096];
+    char token[64];
+    char portnum[8];
+};
+
+int thread_query_endpoint(void* arg) {
+
+    SSL *ssl;
+
+    struct arg_struct * arguments = (struct arg_struct*) arg;
+
+    int server;
+
+    // Connect to the endpoint.
+    if (-1
+            == (server = openConnection(arguments->token,
+                    atoi(arguments->portnum)))) {
+        if (silent == 0) {
+            printf("error: Could not connect, to %s:%d\n", arguments->token,
+                    atoi(arguments->portnum));
+        }
+        exit(EXIT_FAILURE);
+    }
+
+#ifdef __DEBUG__
+    printf("About to connect to %s\n", arguments->token);
+#endif
+
+    ssl = SSL_new(ctx); /* create new SSL connection state */
+
+    SSL_set_fd(ssl, server); /* attach the socket descriptor */
+
+    // output buffer
+    char * output = malloc(4096);
+
+    if (SSL_connect(ssl) == FAIL) { /* perform the connection */
+        ERR_print_errors_fp(stderr);
+    } else {
+
+        if (strlen(arguments->line) == 0) {
+#ifdef __DEBUG__
+            printf("about to send %s, size: %d \n", arguments->line, 1);
+#endif
+            SSL_write(ssl, &arguments->line, 1); /* encrypt & send message */
+        } else {
+#ifdef __DEBUG__
+            printf("about to send %s, size: %d \n", arguments->line,
+                    strlen(arguments->line));
+#endif
+            SSL_write(ssl, &arguments->line, strlen(arguments->line)); /* encrypt & send message */
+        }
+
+        /* An OK sent, is received by a simple 1. */
+        int bytes = SSL_read(ssl, output, 4096); /* get reply & decrypt */
+
+        if (bytes < 1) {
+            if (silent == 0) {
+                printf(
+                        "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
+                        bytes);
+            }
+
+        } else {
+            // If there is input.
+            printf("%s: %s", arguments->token, output);
+        }
+
+        /* Free the result */
+        SSL_free(ssl); /* release connection state */
+    }
+
+    free (output);
+
+    close(server); /* close socket */
+
+    return 0;
+
+}
+
 int main(int argc, char *argv[]) {
 
-    int server, c, index, norunscripts = 1, recursive = 0, silent = 0;
-    char hostname[256] = { "localhost" }, portnum[8] = { "5001" },
-            directory[256] = { 0 }, crt[256] = { "mycrt.pem" }, files[256] =
-                    { 0 };
+    int index;
 
     struct STDINSTDOUT tt = { .buffer_in = { 0 }, .buffer_out = { 0 },
             .offset_in = 0, .offset_out = 0 };
@@ -544,10 +628,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // SSL Stuff.
-    SSL_CTX *ctx;
-    SSL *ssl;
-
     SSL_library_init();
 
     ctx = initCTX();
@@ -559,111 +639,42 @@ int main(int argc, char *argv[]) {
     }
 
     SSL_CTX_set_options(ctx,
-            SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+            SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 |SSL_OP_ALL);
 
     char *token, *rest = hostname;
+    int n, i = 0, pid[64] = { };
+    pthread_t *threads;
+    pthread_attr_t pthread_custom_attr;
+    threads = (pthread_t *) malloc(n * sizeof(*threads));
+    pthread_attr_init(&pthread_custom_attr);
 
-    pid_t pids[64] = { 0 };
-    unsigned int pCounter = 0;
+    /* Start up thread */
+    while ((token = strtok_r(rest, ":,", &rest))) {
 
-    while (1) {
-        while ((token = strtok_r(rest, ":,", &rest))) {
-
-            pids[pCounter] = fork();
-
-            // We're the child. each get the buffer-copy.
-            if (pids[pCounter] == 0) {
-
-                // Connect to the endpoint.
-                if (-1 == (server = openConnection(token, atoi(portnum)))) {
-                    if (silent == 0) {
-                        printf("error: Could not connect, to %s:%d\n", token,
-                                atoi(portnum));
-                    }
-                    exit(EXIT_FAILURE);
-                }
-
-                ssl = SSL_new(ctx); /* create new SSL connection state */
-
-                SSL_set_fd(ssl, server); /* attach the socket descriptor */
-
-                if (SSL_connect(ssl) == FAIL) { /* perform the connection */
-                    ERR_print_errors_fp(stderr);
-                } else {
-
-#ifdef ___DEBUG__
-                    printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
-                    showCertificates(ssl); /* get any certs */
-#endif
-
-                    /** If our buffer is empty, we'll send a zero-packet, to identify ourselves at the receiver-end */
-                    if (tt.offset_out < 1) {
-                        tt.buffer_out[0] = 10;
-                        tt.offset_out = 1;
-                    }
-
-                    SSL_write(ssl, &(tt.buffer_out[0]), tt.offset_out); /* encrypt & send message */
-
-                    /* An OK sent, is received by a simple 1. */
-                    tt.offset_in = SSL_read(ssl, tt.buffer_in,
-                            sizeof(tt.buffer_in)); /* get reply & decrypt */
-
-                    if (tt.offset_in < 1) {
-                        if (silent == 0) {
-                            printf(
-                                    "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
-                                    tt.offset_in);
-                        }
-                    } else {
-                        // If there is input.
-                        if (strlen(tt.buffer_in) > 0)
-                            printf("%s", tt.buffer_in);
-                    }
-
-                    /* Free the result */
-                    SSL_free(ssl); /* release connection state */
-
-                }
-
-                close(server); /* close socket */
-
-#ifdef __DEBUG__
-                printf("Child exited, sucessfully.\n");
-#endif
-                exit(EXIT_SUCCESS);
-
-            } else if (pids[pCounter] < 0) {
-                // error
-                if (silent == 0) {
-                    printf("Had a problem, forking.\n");
-                }
-            } else {
-                pCounter++;
-            } // end fork.
-
-        } // end strtok_r loop
-
-        // exit-loop
         if (token == NULL)
             break;
 
-    } // end retry-loop.
+        struct arg_struct * arguments = malloc(sizeof(struct arg_struct));
 
-    // Wait for child-termination.
-    unsigned int i = 0;
-    for (i = 0; i < pCounter; i++) {
-        int status;
-        while (0 == waitpid(pids[i], &status, WNOHANG))
-            usleep(1000);
-            ;
+        strncpy(arguments->line, tt.buffer_out, sizeof(arguments->line));
+        strncpy(arguments->portnum, portnum, sizeof(arguments->portnum));
+        strncpy(arguments->token, token, sizeof(arguments->token));
 
-        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-            if (silent ==0)
-                printf("Process %d failed.\n", pids[i]);
-        }
+        pid[i] = pthread_create(&threads[i], NULL, &thread_query_endpoint,
+                (void*) arguments);
+
+        i++;
     }
 
-    SSL_CTX_free(ctx); /* release context */
+    // Synchronize the completion of each thread.
+    for (n = 0; n < i; n++) {
+        pthread_join(threads[n], NULL);
+    }
+
+    // Release ssl context
+    if (ctx != NULL) {
+        SSL_CTX_free(ctx);
+    }
 
     exit(EXIT_SUCCESS);
 
