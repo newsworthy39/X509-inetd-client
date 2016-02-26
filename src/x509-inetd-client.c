@@ -468,7 +468,7 @@ struct arg_struct {
     char portnum[8];
 };
 
-int thread_query_endpoint(void* arg) {
+void* thread_query_endpoint(void* arg) {
 
     SSL *ssl;
 
@@ -519,27 +519,18 @@ int thread_query_endpoint(void* arg) {
         int bytes = SSL_read(ssl, output, 4096); /* get reply & decrypt */
 
         if (bytes < 1) {
-            if (silent == 0) {
-                printf(
-                        "Error: Did not received OK statement. Payload not delivered, bytes: %d.\n",
-                        bytes);
-            }
-
-        } else {
-            // If there is input.
-            printf("%s: %s", arguments->token, output);
+            pthread_exit((void*) 0);
         }
 
         /* Free the result */
         SSL_free(ssl); /* release connection state */
     }
 
-    free (output);
+    //free (output);
 
     close(server); /* close socket */
 
-    return 0;
-
+    pthread_exit((void*) output);
 }
 
 int main(int argc, char *argv[]) {
@@ -647,6 +638,7 @@ int main(int argc, char *argv[]) {
     pthread_attr_t pthread_custom_attr;
     threads = (pthread_t *) malloc(n * sizeof(*threads));
     pthread_attr_init(&pthread_custom_attr);
+    char * retvalue[64] = { };
 
     /* Start up thread */
     while ((token = strtok_r(rest, ":,", &rest))) {
@@ -668,7 +660,15 @@ int main(int argc, char *argv[]) {
 
     // Synchronize the completion of each thread.
     for (n = 0; n < i; n++) {
-        pthread_join(threads[n], NULL);
+        pthread_join(threads[n], (void**) &retvalue[n]);
+    }
+
+    // Synchronize the completion of each thread.
+    for (n = 0; n < i; n++) {
+        if (retvalue[n] != NULL) {
+            printf("%s", retvalue[n]);
+            free(retvalue[n]);
+        }
     }
 
     // Release ssl context
